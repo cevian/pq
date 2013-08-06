@@ -1,5 +1,7 @@
 package pq
 
+import "database/sql/driver"
+
 type Copier struct {
 	c       *conn
 	sending bool
@@ -11,6 +13,12 @@ func NewCopier(name string) *Copier {
 	if err != nil {
 		panic(err)
 	}
+	return &cy
+}
+
+func NewCopierFromConn(con driver.Conn) *Copier {
+	conn := con.(*conn)
+	cy := Copier{c: conn}
 	return &cy
 }
 
