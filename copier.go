@@ -7,6 +7,26 @@ type Copier struct {
 	sending bool
 }
 
+/*
+//some statemnt compat functions
+func (cy *Copier) Exec(args []driver.Value) (driver.Result, error) {
+	bytes, ok := args[0].([]byte)
+	if !ok {
+		errorf("Copy data statements require byte parameters")
+	}
+	return nil, cy.Send(bytes)
+}
+
+func (cy *Copier) NumInput() int {
+	return 1
+}
+
+func (cy *Copier) Query(args []driver.Value) (driver.Result, error) {
+	errorf("Copy data statements never accept queries")
+	return nil, nil
+}
+*/
+
 func NewCopier(name string) *Copier {
 	cy := Copier{}
 	err := cy.Open(name)
@@ -18,6 +38,12 @@ func NewCopier(name string) *Copier {
 
 func NewCopierFromConn(con driver.Conn) *Copier {
 	conn := con.(*conn)
+	cy := Copier{c: conn}
+	return &cy
+}
+
+func NewCopierFromTransaction(t driver.Tx) *Copier {
+	conn := t.(*conn)
 	cy := Copier{c: conn}
 	return &cy
 }
@@ -40,6 +66,8 @@ func (cy *Copier) Start(q string) (err error) {
 	for {
 		t, r := cy.c.recv1()
 		switch t {
+		case 'N':
+			//ignore
 		case 'E':
 			err = parseError(r)
 			return err
@@ -47,12 +75,13 @@ func (cy *Copier) Start(q string) (err error) {
 			cy.sending = true
 			return nil
 		default:
-			errorf("unknown response for start copy: %q", t)
+			errorf("unknown response for start copy: %q %v", t, r.string())
 		}
 	}
 }
 
 func (cy *Copier) Send(buf []byte) (err error) {
+	//println("Sending %v", string(buf))
 	if !cy.sending {
 		errorf("Trying to send copy data when not in send mode")
 	}
@@ -63,7 +92,7 @@ func (cy *Copier) Send(buf []byte) (err error) {
 	return nil
 }
 
-func (cy *Copier) End() (err error) {
+func (cy *Copier) Close() (err error) {
 	if !cy.sending {
 		errorf("Trying to send copy data when not in send mode")
 	}

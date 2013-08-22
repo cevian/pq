@@ -22,7 +22,12 @@ func TestSimpleCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cy := NewCopier("user=test dbname=test password=test")
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cy := NewCopierFromTransaction(tx)
 	err = cy.Start("COPY temp (a, b) FROM STDIN")
 	if err != nil {
 		t.Fatal(err)
@@ -34,10 +39,12 @@ func TestSimpleCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = cy.End()
+	err = cy.Close()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	tx.Commit()
 
 }
 
@@ -57,7 +64,12 @@ func TestErrCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	cy := NewCopier("user=test dbname=test password=test")
+	tx, err := db.Begin()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	cy := NewCopierFromTransaction(tx)
 	err = cy.Start("COPY temp (a, b) FROM STDIN")
 	if err != nil {
 		t.Fatal(err)
@@ -69,9 +81,10 @@ func TestErrCopy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	err = cy.End()
+	err = cy.Close()
 	if err == nil {
 		t.Fatal("Should Have Thrown An Error Due To Bad Input")
 	}
 
+	tx.Rollback()
 }
